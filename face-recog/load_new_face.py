@@ -10,7 +10,7 @@ from zenoh import Zenoh, Encoding, Value
 ap = argparse.ArgumentParser()
 ap.add_argument("-n", "--name", required=True,
                 help="The name of the person")
-ap.add_argument("-z", "--zenoh", type=str, default="127.0.0.1",
+ap.add_argument("-z", "--zenoh", type=str, default=None,
                 help="location of the ZENOH router")
 ap.add_argument("-p", "--prefix", type=str, default="/demo/facerecog",
                 help="The resources prefix")
@@ -23,7 +23,9 @@ args = vars(ap.parse_args())
 
 detector = cv2.CascadeClassifier(args['cascade'])
 
-print("[INFO] Connecting to YAKS ")
+print('[INFO] Connecting to zenoh {}'.format(
+    args['zenoh'] if args['zenoh'] is not None else "found via multicast discovery..."
+))
 z = Zenoh.login(args['zenoh'])
 ws = z.workspace('/')
 

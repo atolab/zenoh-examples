@@ -6,7 +6,7 @@ import json
 import argparse
 
 ap = argparse.ArgumentParser()
-ap.add_argument("-z", "--zenoh", type=str, default="127.0.0.1",
+ap.add_argument("-z", "--zenoh", type=str, default=None,
                 help="location of the ZENOH router")
 ap.add_argument("-d", "--dataset", required=True,
                 help="vectors dataset location")
@@ -16,6 +16,9 @@ args = vars(ap.parse_args())
 
 
 def main(face_db):
+    print('[INFO] Connecting to zenoh {}'.format(
+        args['zenoh'] if args['zenoh'] is not None else "found via multicast discovery..."
+    ))
     locator = args['zenoh']
     z = Zenoh.login(locator)
 

@@ -8,7 +8,7 @@ from zenoh.net import ZN_INFO_PID_KEY
 import binascii
 
 ap = argparse.ArgumentParser()
-ap.add_argument("-z", "--zenoh", type=str, default="127.0.0.1",
+ap.add_argument("-z", "--zenoh", type=str, default=None,
                 help="location of the ZENOH router")
 ap.add_argument("-w", "--width", type=int, default=200,
                 help="width of the published faces")
@@ -25,7 +25,10 @@ args = vars(ap.parse_args())
 
 jpeg_opts = [int(cv2.IMWRITE_JPEG_QUALITY), args["quality"]]
 
-print("[INFO] Connecting to YAKS ")
+print('[INFO] Connecting to zenoh {}'.format(
+    args['zenoh'] if args['zenoh'] is not None else "found via multicast discovery..."
+))
+
 z = Zenoh.login(args['zenoh'])
 pid = binascii.hexlify(z.rt.info()[ZN_INFO_PID_KEY]).decode('ascii')
 ws = z.workspace('/')

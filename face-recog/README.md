@@ -5,7 +5,7 @@ This is a relatively simple demo that shows how zenoh can be used to do face rec
 Python 3, pip3 and the zenoh-python api.
 Install the required python modules:
 
-        $ pip3 install jsonschema jsonpickle argcomplete imutils opencv-python opencv-contrib-python face_recognition zenoh-python
+        $ pip3 install jsonschema jsonpickle argcomplete imutils opencv-python opencv-contrib-python face_recognition eclipse-zenoh
 
 
 ## Step I -- Start a zenoh instance

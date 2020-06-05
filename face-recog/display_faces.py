@@ -5,7 +5,7 @@ import time
 import numpy as np
 
 ap = argparse.ArgumentParser()
-ap.add_argument("-z", "--zenoh", type=str, default="127.0.0.1",
+ap.add_argument("-z", "--zenoh", type=str, default=None,
                 help="location of the ZENOH router")
 ap.add_argument("-p", "--prefix", type=str, default="/demo/facerecog")
 ap.add_argument("-d", "--delay", type=float, default=0.05,

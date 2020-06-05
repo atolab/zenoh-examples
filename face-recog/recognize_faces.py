@@ -7,7 +7,7 @@ import face_recognition
 from zenoh import Zenoh, Encoding, Value, ChangeKind
 
 ap = argparse.ArgumentParser()
-ap.add_argument("-z", "--zenoh", type=str, default="127.0.0.1",
+ap.add_argument("-z", "--zenoh", type=str, default=None,
                 help="location of the ZENOH router")
 ap.add_argument("-q", "--quality", type=int, default=95,
                 help="The quality of the published faces (0 - 100)")
@@ -52,7 +52,9 @@ def faces_listener(changes):
         cams[cam][face] = change.get_value().get_value()
 
 
-print("[INFO] Connecting to YAKS ")
+print('[INFO] Connecting to zenoh {}'.format(
+    args['zenoh'] if args['zenoh'] is not None else "found via multicast discovery..."
+))
 z = Zenoh.login(args['zenoh'])
 ws = z.workspace('/')
 
