@@ -14,18 +14,20 @@ import os
 import json
 
 # construct the argument parser and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-i", "--dataset", required=True,
-                help="path to input directory of faces + images")
-ap.add_argument("-o", "--output", required=True,
-                help="path to output file")
-ap.add_argument("-d", "--detection-method", type=str, default="cnn",
-                help="face detection model to use: either `hog` or `cnn`")
-args = vars(ap.parse_args())
+parser = argparse.ArgumentParser(
+    prog='encode_faces',
+    description='zenoh face recognition example face encoder')
+parser.add_argument('-i', '--dataset', required=True,
+                help='path to input directory of faces + images')
+parser.add_argument('-o', '--output', required=True,
+                help='path to output file')
+parser.add_argument('-d', '--detection-method', type=str, default='cnn',
+                help='face detection model to use: either `hog` or `cnn`')
+args = vars(parser.parse_args())
 
 # grab the paths to the input images in our dataset
-print("[INFO] Quantifying faces...")
-imagePaths = list(paths.list_images(args["dataset"]))
+print('[INFO] Quantify faces...')
+imagePaths = list(paths.list_images(args['dataset']))
 
 # initialize the list of known encodings and known names
 face_db = {}
@@ -33,7 +35,7 @@ face_db = {}
 # loop over the image paths
 for (i, imagePath) in enumerate(imagePaths):
     # extract the person name from the image path
-    print("[INFO] processing image {}/{} ({})".format(
+    print('[INFO] process image {}/{} ({})'.format(
         i + 1, len(imagePaths), imagePath))
     name = imagePath.split(os.path.sep)[-2]
 
@@ -45,7 +47,7 @@ for (i, imagePath) in enumerate(imagePaths):
     # detect the (x, y)-coordinates of the bounding boxes
     # corresponding to each face in the input image
     boxes = face_recognition.face_locations(
-        rgb, model=args["detection_method"])
+        rgb, model=args['detection_method'])
 
     # compute the facial embedding for the face
     encodings = face_recognition.face_encodings(rgb, boxes)
@@ -62,8 +64,10 @@ for (i, imagePath) in enumerate(imagePaths):
 
 
 # dump the facial encodings + names to disk
-print("[INFO] Serializing encodings...")
+print('[INFO] Serialize encodings...')
 
-f = open(args['output'], "w")
+f = open(args['output'], 'w')
 json.dump(face_db, f)
 f.close()
+
+print('[INFO] Done.')

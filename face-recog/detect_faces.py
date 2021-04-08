@@ -2,40 +2,52 @@ import argparse
 from imutils.video import VideoStream
 import imutils
 import time
+import io
 import cv2
-from zenoh import Zenoh, Encoding, Value
-from zenoh.net import ZN_INFO_PID_KEY
+import zenoh
 import binascii
+import numpy as np
 
-ap = argparse.ArgumentParser()
-ap.add_argument("-z", "--zenoh", type=str, default=None,
-                help="location of the ZENOH router")
-ap.add_argument("-w", "--width", type=int, default=200,
-                help="width of the published faces")
-ap.add_argument("-q", "--quality", type=int, default=95,
-                help="quality of the published faces (0 - 100)")
-ap.add_argument("-c", "--cascade", type=str,
-                default="haarcascade_frontalface_default.xml",
-                help="path to the face cascade file")
-ap.add_argument("-d", "--delay", type=float, default=0.05,
-                help="delay between each frame in seconds")
-ap.add_argument("-p", "--prefix", type=str, default="/demo/facerecog",
-                help="resources prefix")
-args = vars(ap.parse_args())
+parser = argparse.ArgumentParser(
+    prog='detect_faces',
+    description='zenoh face recognition example face detector')
+parser.add_argument('-m', '--mode', type=str, choices=['peer', 'client'],
+                    help='The zenoh session mode.')
+parser.add_argument('-e', '--peer', type=str, metavar='LOCATOR', action='append',
+                    help='Peer locators used to initiate the zenoh session.')
+parser.add_argument('-l', '--listener', type=str, metavar='LOCATOR', action='append',
+                    help='Locators to listen on.')
+parser.add_argument('-w', '--width', type=int, default=200,
+                    help='width of the published faces')
+parser.add_argument('-q', '--quality', type=int, default=95,
+                    help='quality of the published faces (0 - 100)')
+parser.add_argument('-a', '--cascade', type=str,
+                    default='haarcascade_frontalface_default.xml',
+                    help='path to the face cascade file')
+parser.add_argument('-d', '--delay', type=float, default=0.05,
+                    help='delay between each frame in seconds')
+parser.add_argument('-p', '--prefix', type=str, default='/demo/facerecog',
+                    help='resources prefix')
+parser.add_argument('-c', '--config', type=str, metavar='FILE',
+                    help='A zenoh configuration file.')
 
-jpeg_opts = [int(cv2.IMWRITE_JPEG_QUALITY), args["quality"]]
+args = vars(parser.parse_args())
+conf = zenoh.config_from_file(args['config']) if args['config'] is not None else {}
+for arg in ['mode', 'peer', 'listener']:
+    if args[arg] is not None:
+        conf[arg] = args[arg] if type(args[arg]) == str else ','.join(args[arg])
 
-print('[INFO] Connecting to zenoh {}'.format(
-    args['zenoh'] if args['zenoh'] is not None else "found via multicast discovery..."
-))
+jpeg_opts = [int(cv2.IMWRITE_JPEG_QUALITY), args['quality']]
 
-z = Zenoh.login(args['zenoh'])
-pid = binascii.hexlify(z.rt.info()[ZN_INFO_PID_KEY]).decode('ascii')
-ws = z.workspace('/')
+print('[INFO] Open zenoh session...')
+
+zenoh.init_logger()
+z = zenoh.net.open(conf)
+pid = z.info()['info_pid']
 
 detector = cv2.CascadeClassifier(args['cascade'])
 
-print("[INFO] Starting video stream...")
+print('[INFO] Start video stream...')
 vs = VideoStream(src=0).start()
 time.sleep(1.0)
 
@@ -56,14 +68,14 @@ while True:
     for (i, (top, right, bottom, left)) in faces:
         face = raw[int(top*ratio):int(bottom*ratio),
                    int(left*ratio):int(right*ratio)]
-        face = imutils.resize(face, height=args["width"], width=args["width"])
+        face = imutils.resize(face, height=args['width'], width=args['width'])
         _, jpeg = cv2.imencode('.jpg', face, jpeg_opts)
-        buf = jpeg.tobytes()
+        buf = io.BytesIO()
+        np.save(buf, jpeg, allow_pickle=True)
 
-        ws.put("{}/faces/{}/{}".format(args['prefix'], pid, i),
-               Value(buf, Encoding.RAW))
+        z.write('{}/faces/{}/{}'.format(args['prefix'], pid, i), buf.getvalue())
 
-    time.sleep(args["delay"])
+    time.sleep(args['delay'])
 
 vs.stop()
-z.logout()
+z.close()

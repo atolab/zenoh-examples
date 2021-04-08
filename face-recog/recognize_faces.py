@@ -1,21 +1,35 @@
 import argparse
 import time
+import io
 import ast
 import cv2
 import numpy as np
 import face_recognition
-from zenoh import Zenoh, Encoding, Value, ChangeKind
+import zenoh
 
-ap = argparse.ArgumentParser()
-ap.add_argument("-z", "--zenoh", type=str, default=None,
-                help="location of the ZENOH router")
-ap.add_argument("-q", "--quality", type=int, default=95,
-                help="The quality of the published faces (0 - 100)")
-ap.add_argument("-p", "--prefix", type=str, default="/demo/facerecog",
-                help="The resources prefix")
-ap.add_argument("-d", "--delay", type=float, default=0.2,
-                help="delay between each recognition")
-args = vars(ap.parse_args())
+parser = argparse.ArgumentParser(
+    prog='recognize_faces',
+    description='zenoh face recognition example')
+parser.add_argument('-m', '--mode', type=str, choices=['peer', 'client'],
+                    help='The zenoh session mode.')
+parser.add_argument('-e', '--peer', type=str, metavar='LOCATOR', action='append',
+                    help='Peer locators used to initiate the zenoh session.')
+parser.add_argument('-l', '--listener', type=str, metavar='LOCATOR', action='append',
+                    help='Locators to listen on.')
+parser.add_argument('-q', '--quality', type=int, default=95,
+                    help='The quality of the published faces (0 - 100)')
+parser.add_argument('-p', '--prefix', type=str, default='/demo/facerecog',
+                    help='The resources prefix')
+parser.add_argument('-d', '--delay', type=float, default=0.2,
+                    help='delay between each recognition')
+parser.add_argument('-c', '--config', type=str, metavar='FILE',
+                    help='A zenoh configuration file.')
+
+args = vars(parser.parse_args())
+conf = zenoh.config_from_file(args['config']) if args['config'] is not None else {}
+for arg in ['mode', 'peer', 'listener']:
+    if args[arg] is not None:
+        conf[arg] = args[arg] if type(args[arg]) == str else ','.join(args[arg])
 
 data = {}
 data['encodings'] = []
@@ -32,63 +46,59 @@ def add_face_to_data(fdata, key, value):
     fdata['encodings'].append(a)
 
 
-def update_face_data(changes):
-    for change in changes:
-        if change.get_kind() == ChangeKind.PUT:
-            print('Received face vector {}'.format(change.get_path()))
-            value = change.get_value().value
-            add_face_to_data(data, change.get_path(), value)
+def update_face_data(sample):
+    if sample.data_info is None or sample.data_info.kind is None or sample.data_info.kind == zenoh.ChangeKind.PUT:
+        print('Received face vector {}'.format(sample.res_name))
+        add_face_to_data(data, sample.res_name, sample.payload.decode('utf-8'))
 
 
-def faces_listener(changes):
-    for change in changes:
-        chunks = change.get_path().split('/')
-        cam = chunks[-2]
-        face = int(chunks[-1])
+def faces_listener(sample):
+    chunks = sample.res_name.split('/')
+    cam = chunks[-2]
+    face = int(chunks[-1])
 
-        if cam not in cams:
-            cams[cam] = {}
+    if cam not in cams:
+        cams[cam] = {}
 
-        cams[cam][face] = change.get_value().get_value()
+    cams[cam][face] = sample.payload
 
 
-print('[INFO] Connecting to zenoh {}'.format(
-    args['zenoh'] if args['zenoh'] is not None else "found via multicast discovery..."
-))
-z = Zenoh.login(args['zenoh'])
-ws = z.workspace('/')
+print('[INFO] Open zenoh session...')
+zenoh.init_logger()
+z = zenoh.net.open(conf)
 
-print("[INFO] Retrieving faces vectors")
-for vector in ws.get(args['prefix'] + "/vectors/**", encoding=Encoding.STRING):
-    add_face_to_data(data, vector.path, vector.value.value)
+print('[INFO] Retrieve faces vectors...')
+for vector in z.query_collect(args['prefix'] + '/vectors/**', ''):
+    add_face_to_data(data, vector.data.res_name, vector.data.payload.decode('utf-8'))
 
-print("[INFO] Starting recognition...")
-ws.subscribe(args['prefix'] + "/vectors/**", update_face_data)
-ws.subscribe(args['prefix'] + "/faces/*/*", faces_listener)
+print('[INFO] Start recognition...')
+sub_info = zenoh.net.SubInfo(zenoh.net.Reliability.Reliable, zenoh.net.SubMode.Push)
+sub1 = z.declare_subscriber(args['prefix'] + '/vectors/**', sub_info, update_face_data)
+sub2 = z.declare_subscriber(args['prefix'] + '/faces/*/*', sub_info, faces_listener)
 
 while True:
     for cam in list(cams):
         faces = cams[cam]
         for face in list(faces):
-            npImage = np.array(faces[face])
+            npImage = np.load(io.BytesIO(faces[face]), allow_pickle=True)
             matImage = cv2.imdecode(npImage, 1)
             rgb = cv2.cvtColor(matImage, cv2.COLOR_BGR2RGB)
 
             encodings = face_recognition.face_encodings(rgb)
 
-            name = "Unknown"
+            name = 'Unknown'
             if len(encodings) > 0:
-                matches = face_recognition.compare_faces(data["encodings"],
+                matches = face_recognition.compare_faces(data['encodings'],
                                                          encodings[0])
                 if True in matches:
                     matchedIdxs = [i for (i, b) in enumerate(matches) if b]
                     counts = {}
                     for i in matchedIdxs:
-                        name = data["names"][i]
+                        name = data['names'][i]
                         counts[name] = counts.get(name, 0) + 1
                     name = max(counts, key=counts.get)
 
-            path = args['prefix'] + "/faces/" + cam + "/" + str(face) + "/name"
-            ws.put(path, Value(name, Encoding.STRING))
+            path = args['prefix'] + '/faces/' + cam + '/' + str(face) + '/name'
+            z.write(path, name.encode('utf-8'))
 
     time.sleep(args['delay'])

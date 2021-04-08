@@ -5,29 +5,40 @@ import cv2
 import imutils
 from imutils.video import VideoStream
 import face_recognition
-from zenoh import Zenoh, Encoding, Value
+import zenoh
 
-ap = argparse.ArgumentParser()
-ap.add_argument("-n", "--name", required=True,
-                help="The name of the person")
-ap.add_argument("-z", "--zenoh", type=str, default=None,
-                help="location of the ZENOH router")
-ap.add_argument("-p", "--prefix", type=str, default="/demo/facerecog",
-                help="The resources prefix")
-ap.add_argument("-c", "--cascade", type=str,
-                default="haarcascade_frontalface_default.xml",
-                help="path to the face cascade file")
-ap.add_argument("-d", "--detection-method", type=str, default="cnn",
-                help="face detection model to use: either `hog` or `cnn`")
-args = vars(ap.parse_args())
+parser = argparse.ArgumentParser(
+    prog='detect_faces',
+    description='zenoh face recognition example face loader')
+parser.add_argument('-m', '--mode', type=str, choices=['peer', 'client'],
+                    help='The zenoh session mode.')
+parser.add_argument('-e', '--peer', type=str, metavar='LOCATOR', action='append',
+                    help='Peer locators used to initiate the zenoh session.')
+parser.add_argument('-l', '--listener', type=str, metavar='LOCATOR', action='append',
+                    help='Locators to listen on.')
+parser.add_argument('-n', '--name', required=True,
+                    help='The name of the person')
+parser.add_argument('-p', '--prefix', type=str, default='/demo/facerecog',
+                    help='The resources prefix')
+parser.add_argument('-a', '--cascade', type=str,
+                    default='haarcascade_frontalface_default.xml',
+                    help='path to the face cascade file')
+parser.add_argument('-d', '--detection-method', type=str, default='cnn',
+                    help='face detection model to use: either `hog` or `cnn`')
+parser.add_argument('-c', '--config', type=str, metavar='FILE',
+                    help='A zenoh configuration file.')
+
+args = vars(parser.parse_args())
+conf = zenoh.config_from_file(args['config']) if args['config'] is not None else {}
+for arg in ['mode', 'peer', 'listener']:
+    if args[arg] is not None:
+        conf[arg] = args[arg] if type(args[arg]) == str else ','.join(args[arg])
 
 detector = cv2.CascadeClassifier(args['cascade'])
 
-print('[INFO] Connecting to zenoh {}'.format(
-    args['zenoh'] if args['zenoh'] is not None else "found via multicast discovery..."
-))
-z = Zenoh.login(args['zenoh'])
-ws = z.workspace('/')
+print('[INFO] Open zenoh session...')
+zenoh.init_logger()
+z = zenoh.net.open(conf)
 
 vs = VideoStream(src=0).start()
 
@@ -48,13 +59,13 @@ while True:
                       (rects[0][0]+rects[0][2], rects[0][1]+rects[0][3]),
                       (0, 255, 0), 2)
 
-    cv2.putText(frame, "Press <space> to take picture <q> to quit.", (10, 250),
+    cv2.putText(frame, 'Press <space> to take picture <q> to quit.', (10, 250),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.65, (0, 255, 0), 2)
-    cv2.imshow("Register new face vector", frame)
+    cv2.imshow('Register new face vector', frame)
 
     key = cv2.waitKey(1) & 0xFF
-    if key == ord(" "):
+    if key == ord(' '):
         if len(rects) > 0:
             face = frame[rects[0][1]:rects[0][1]+rects[0][3],
                          rects[0][0]:rects[0][0]+rects[0][2]]
@@ -63,25 +74,23 @@ while True:
             encoding = face_recognition.face_encodings(rgb, box)[0]
             elist = encoding.tolist()
 
-            fs = ws.get(args["prefix"] + "/vectors/**",
-                        encoding=Encoding.STRING)
+            faces = z.query_collect(args['prefix'] + '/vectors/**', '')
             counter = 0
-            for k, _ in fs:
-                chunks = k.split('/')
+            for face in faces:
+                chunks = face.data.res_name.split('/')
                 name = chunks[-2]
-                if name == args["name"]:
+                if name == args['name']:
                     if counter <= int(chunks[-1]):
                         counter = int(chunks[-1]) + 1
 
             uri = '{}/vectors/{}/{}'.format(
-                args["prefix"], args["name"], str(counter))
+                args['prefix'], args['name'], str(counter))
             print('> Inserting face vector {}'.format(uri))
-            ws.put(uri, Value(json.dumps(elist), encoding=Encoding.STRING))
+            z.write(uri, json.dumps(elist).encode('utf-8'))
 
     time.sleep(0.05)
 
-    if key == ord("q"):
+    if key == ord('q'):
         exit(0)
 
-vs.stop()
-z.logout()
+z.close()
