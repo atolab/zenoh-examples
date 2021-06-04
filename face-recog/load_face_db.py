@@ -1,4 +1,5 @@
 import zenoh
+from zenoh import Zenoh, Value
 import sys
 import json
 import argparse
@@ -27,23 +28,26 @@ for arg in ['mode', 'peer', 'listener']:
 
 f = open(args['dataset'])
 faces = json.load(f)
-  
+
 print('[INFO] Open zenoh session...')
 zenoh.init_logger()
-z = zenoh.net.open(conf)
+z = Zenoh(conf)
+w = z.workspace()
 
 # If not yet existing, add a memory storage that will store the dataset
-storage_id = 'facerecog-store'
-if z.query_collect('/@/router/local/plugin/storages/backend/memory/storage/my-test'):
-    print('Add storage ')
-    properties = {'selector': '{}/**'.format(args['prefix'])}
-    a.add_storage(storage_id, properties)
+storage_admin_path = '/@/router/local/plugin/storages/backend/memory/storage/facerecog-store'
+if not w.get(storage_admin_path):
+    path_expr = '{}/**'.format(args['prefix'])
+    print('Add storage: on {}'.format(path_expr))
+    properties = {'path_expr': path_expr}
+    w.put(storage_admin_path, properties)
 
-for k, vs in face_db.items():
+for k, vs in faces.items():
     for j, v in enumerate(vs):
         uri = '{}/vectors/{}/{}'.format(args['prefix'], k, j)
         print('> Inserting face {}'.format(uri))
-        z.write(uri, json.dumps(v).encode('utf-8'))
+        print('{}'.format(v))
+        w.put(uri, Value.Json(json.dumps(v)))
 
 z.close()
 
