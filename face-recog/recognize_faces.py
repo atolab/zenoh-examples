@@ -69,6 +69,7 @@ print('[INFO] Open zenoh session...')
 zenoh.init_logger()
 z = Zenoh(conf)
 w = z.workspace()
+time.sleep(0.5)
 
 print('[INFO] Retrieve faces vectors...')
 for vector in w.get(args['prefix'] + '/vectors/**'):

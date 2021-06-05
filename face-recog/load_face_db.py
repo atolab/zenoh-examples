@@ -34,6 +34,7 @@ print('[INFO] Open zenoh session...')
 zenoh.init_logger()
 z = Zenoh(conf)
 w = z.workspace()
+time.sleep(0.5)
 
 # If not yet existing, add a memory storage that will store the dataset
 storage_admin_path = '/@/router/local/plugin/storages/backend/memory/storage/facerecog-store'
