@@ -3,6 +3,7 @@ from zenoh import Zenoh, Value
 import sys
 import json
 import argparse
+import time
 
 parser = argparse.ArgumentParser(
     prog='detect_faces',
@@ -37,10 +38,11 @@ w = z.workspace()
 # If not yet existing, add a memory storage that will store the dataset
 storage_admin_path = '/@/router/local/plugin/storages/backend/memory/storage/facerecog-store'
 if not w.get(storage_admin_path):
-    path_expr = '{}/**'.format(args['prefix'])
+    path_expr = '{}/vectors/**'.format(args['prefix'])
     print('Add storage: on {}'.format(path_expr))
     properties = {'path_expr': path_expr}
     w.put(storage_admin_path, properties)
+    time.sleep(1)
 
 for k, vs in faces.items():
     for j, v in enumerate(vs):
