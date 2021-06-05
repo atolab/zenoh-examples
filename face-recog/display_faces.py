@@ -1,4 +1,5 @@
 import zenoh
+from zenoh import Zenoh
 import argparse
 import io
 import cv2
@@ -30,8 +31,9 @@ for arg in ['mode', 'peer', 'listener']:
 cams = {}
 
 
-def faces_listener(sample):
-    chunks = sample.res_name.split('/')
+def faces_listener(change):
+    #print('[DEBUG] Received face: '+change.path)
+    chunks = change.path.split('/')
     cam = chunks[-2]
     face = int(chunks[-1])
 
@@ -40,12 +42,13 @@ def faces_listener(sample):
     if face not in cams[cam]:
         cams[cam][face] = {'img': b'', 'name': '', 'time': 0}
 
-    cams[cam][face]['img'] = sample.payload
+    cams[cam][face]['img'] = bytes(change.value.get_content())
     cams[cam][face]['time'] = time.time()
 
 
-def names_listener(sample):
-    chunks = sample.res_name.split('/')
+def names_listener(change):
+    #print('[DEBUG] Received name: {} {} => {}', change.path, change.value.get_content())
+    chunks = change.path.split('/')
     cam = chunks[-3]
     face = int(chunks[-2])
 
@@ -54,19 +57,18 @@ def names_listener(sample):
     if face not in cams[cam]:
         cams[cam][face] = {'img': b'', 'name': '', 'time': 0}
 
-    cams[cam][face]['name'] = sample.payload.decode('utf-8') 
+    cams[cam][face]['name'] = change.value.get_content() 
 
 
 print('[INFO] Open zenoh session...')
 zenoh.init_logger()
-z = zenoh.net.open(conf)
-sub_info = zenoh.net.SubInfo(zenoh.net.Reliability.Reliable, zenoh.net.SubMode.Push)
-sub1 = z.declare_subscriber(args['prefix'] + '/faces/*/*', sub_info, faces_listener)
-sub2 = z.declare_subscriber(args['prefix'] + '/faces/*/*/name', sub_info, names_listener)
+z = Zenoh(conf)
+w = z.workspace()
+sub1 = w.subscribe(args['prefix'] + '/faces/*/*', faces_listener)
+sub2 = w.subscribe(args['prefix'] + '/faces/*/*/name', names_listener)
 
-names = z.query_collect(args['prefix'] + '/faces/*/*/name', '')
-for name in names :
-    names_listener(name.data)
+for data in w.get(args['prefix'] + '/faces/*/*/name') :
+    names_listener(data)
 
 print('[INFO] Display detected faces ...')
 
@@ -102,6 +104,6 @@ while True:
         break
 
 cv2.destroyAllWindows()
-sub1.undeclare()
-sub2.undeclare()
+sub1.close()
+sub2.close()
 z.close()

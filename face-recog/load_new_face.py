@@ -6,6 +6,7 @@ import imutils
 from imutils.video import VideoStream
 import face_recognition
 import zenoh
+from zenoh import Zenoh, Value
 
 parser = argparse.ArgumentParser(
     prog='detect_faces',
@@ -38,7 +39,8 @@ detector = cv2.CascadeClassifier(args['cascade'])
 
 print('[INFO] Open zenoh session...')
 zenoh.init_logger()
-z = zenoh.net.open(conf)
+z = Zenoh(conf)
+w = z.workspace()
 
 vs = VideoStream(src=0).start()
 
@@ -74,10 +76,10 @@ while True:
             encoding = face_recognition.face_encodings(rgb, box)[0]
             elist = encoding.tolist()
 
-            faces = z.query_collect(args['prefix'] + '/vectors/**', '')
+            faces = w.get(args['prefix'] + '/vectors/**')
             counter = 0
             for face in faces:
-                chunks = face.data.res_name.split('/')
+                chunks = face.path.split('/')
                 name = chunks[-2]
                 if name == args['name']:
                     if counter <= int(chunks[-1]):
@@ -86,7 +88,7 @@ while True:
             uri = '{}/vectors/{}/{}'.format(
                 args['prefix'], args['name'], str(counter))
             print('> Inserting face vector {}'.format(uri))
-            z.write(uri, json.dumps(elist).encode('utf-8'))
+            w.put(uri, Value.Json(json.dumps(elist)))
 
     time.sleep(0.05)
 

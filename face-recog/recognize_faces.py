@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import face_recognition
 import zenoh
+from zenoh import Zenoh, Value
 
 parser = argparse.ArgumentParser(
     prog='recognize_faces',
@@ -41,40 +42,41 @@ def add_face_to_data(fdata, key, value):
     chunks = key.split('/')
     name = chunks[-2]
     num = chunks[-1]
+    print('[INFO] Add face to recognize: {}/{}'.format(name, num))
     fdata['names'].append(name)
     a = ast.literal_eval(value)
     fdata['encodings'].append(a)
 
 
-def update_face_data(sample):
-    if sample.data_info is None or sample.data_info.kind is None or sample.data_info.kind == zenoh.ChangeKind.PUT:
-        print('Received face vector {}'.format(sample.res_name))
-        add_face_to_data(data, sample.res_name, sample.payload.decode('utf-8'))
+def update_face_data(change):
+    if change.kind == zenoh.ChangeKind.PUT:
+        add_face_to_data(data, change.path, change.value.get_content())
 
 
-def faces_listener(sample):
-    chunks = sample.res_name.split('/')
+def faces_listener(change):
+    #print('[DEBUG] Received face to recognize: {}'.format(change.path))
+    chunks = change.path.split('/')
     cam = chunks[-2]
     face = int(chunks[-1])
 
     if cam not in cams:
         cams[cam] = {}
 
-    cams[cam][face] = sample.payload
+    cams[cam][face] = bytes(change.value.get_content())
 
 
 print('[INFO] Open zenoh session...')
 zenoh.init_logger()
-z = zenoh.net.open(conf)
+z = Zenoh(conf)
+w = z.workspace()
 
 print('[INFO] Retrieve faces vectors...')
-for vector in z.query_collect(args['prefix'] + '/vectors/**', ''):
-    add_face_to_data(data, vector.data.res_name, vector.data.payload.decode('utf-8'))
+for vector in w.get(args['prefix'] + '/vectors/**'):
+    add_face_to_data(data, vector.path, vector.value.get_content())
 
 print('[INFO] Start recognition...')
-sub_info = zenoh.net.SubInfo(zenoh.net.Reliability.Reliable, zenoh.net.SubMode.Push)
-sub1 = z.declare_subscriber(args['prefix'] + '/vectors/**', sub_info, update_face_data)
-sub2 = z.declare_subscriber(args['prefix'] + '/faces/*/*', sub_info, faces_listener)
+sub1 = w.subscribe(args['prefix'] + '/vectors/**', update_face_data)
+sub2 = w.subscribe(args['prefix'] + '/faces/*/*', faces_listener)
 
 while True:
     for cam in list(cams):
@@ -99,6 +101,7 @@ while True:
                     name = max(counts, key=counts.get)
 
             path = args['prefix'] + '/faces/' + cam + '/' + str(face) + '/name'
-            z.write(path, name.encode('utf-8'))
+            #print('[DEBUG] Name for {} : {}'.format(path, name))
+            w.put(path, name)
 
     time.sleep(args['delay'])

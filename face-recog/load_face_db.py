@@ -46,7 +46,6 @@ for k, vs in faces.items():
     for j, v in enumerate(vs):
         uri = '{}/vectors/{}/{}'.format(args['prefix'], k, j)
         print('> Inserting face {}'.format(uri))
-        print('{}'.format(v))
         w.put(uri, Value.Json(json.dumps(v)))
 
 z.close()
