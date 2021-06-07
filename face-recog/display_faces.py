@@ -1,6 +1,7 @@
 import zenoh
 from zenoh import Zenoh
 import argparse
+import imutils
 import io
 import cv2
 import time
@@ -82,8 +83,9 @@ while True:
             if faces[face]['time'] > now - 0.2:
                 npImage = np.load(io.BytesIO(faces[face]['img']), allow_pickle=True)
                 matImage = cv2.imdecode(npImage, 1)
-                h, w, _ = matImage.shape
-                vbuf[40:40+h, 200*face:200*face+w] = matImage
+                resImage = imutils.resize(matImage, width=200)
+                h, w, _ = resImage.shape
+                vbuf[40:40+h, 200*face:200*face+w] = resImage
 
                 name = faces[face]['name']
                 color = (0, 0, 255) if name == 'Unknown' else (0, 255, 0)
