@@ -37,13 +37,18 @@ w = z.workspace()
 time.sleep(0.5)
 
 # If not yet existing, add a memory storage that will store the dataset
-storage_admin_path = '/@/router/local/plugin/storages/backend/memory/storage/facerecog-store'
-if not w.get(storage_admin_path):
-    path_expr = '{}/vectors/**'.format(args['prefix'])
-    print('Add storage: on {}'.format(path_expr))
-    properties = {'path_expr': path_expr}
-    w.put(storage_admin_path, properties)
-    time.sleep(1)
+try:
+    storage_admin_path = '/@/router/local/plugin/storages/backend/memory/storage/facerecog-store'
+    if not w.get(storage_admin_path):
+        path_expr = '{}/vectors/**'.format(args['prefix'])
+        print('Add storage: on {}'.format(path_expr))
+        properties = {'path_expr': path_expr}
+        w.put(storage_admin_path, properties)
+        time.sleep(1)
+except:
+    e = sys.exc_info()[0]
+    print('Error creating storage: {}'.format(e))
+
 
 for k, vs in faces.items():
     for j, v in enumerate(vs):
