@@ -38,8 +38,17 @@ For using our demo.zenoh.io do:
 
         $ python3 load_face_db.py -d face-sig-db/tennis-db.json -e tcp/demo.zenoh.io:7447
 
-## Step IV -- Run the face detection component
-This component reads frames from the camera, detects faces and publishes the faces images to zenoh.
+## Step IV -- Run the video capture component
+This component reads frames from the camera and publishes them to zenoh.
+
+        $ python3 capture_video.py
+
+For using our demo.zenoh.io do:
+
+        $ python3 capture_video.py -e tcp/demo.zenoh.io:7447
+
+## Step V -- Run the face detection component
+This component subscribes to video frames from the video capture component, detects faces and publishes the faces images to zenoh.
 
         $ python3 detect_faces.py
 
@@ -47,8 +56,8 @@ For using our demo.zenoh.io do:
 
         $ python3 detect_faces.py -e tcp/demo.zenoh.io:7447
 
-## Step V -- Run the face recognition component
-This component subscribes to faces images from the detecton component, and to face signatures from the dataset on zenoh, identifies received faces and publishes identifications to YAKS.
+## Step VI -- Run the face recognition component
+This component subscribes to faces images from the detecton component, and to face signatures from the dataset on zenoh, identifies received faces and publishes identifications to zenoh.
 
         $ python3 recognize_faces.py
 
@@ -56,8 +65,8 @@ For using our demo.zenoh.io do:
 
         $ python3 recognize_faces.py -e tcp/demo.zenoh.io:7447
 
-## Step VI -- Run the display component
-This component subscribes to faces images from the detecton component, and to identifications from the face recognition component on YAKS and displays them.
+## Step VII -- Run the display component
+This component subscribes to faces images from the detecton component, and to identifications from the face recognition component on zenoh and displays them.
 
         $ python3 display_faces.py
 
