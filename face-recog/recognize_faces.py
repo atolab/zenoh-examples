@@ -54,7 +54,7 @@ def update_face_data(change):
 
 
 def faces_listener(change):
-    #print('[DEBUG] Received face to recognize: {}'.format(change.path))
+    # print('[DEBUG] Received face to recognize: {}'.format(change.path))
     chunks = change.path.split('/')
     cam = chunks[-2]
     face = int(chunks[-1])
@@ -102,7 +102,7 @@ while True:
                     name = max(counts, key=counts.get)
 
             path = args['prefix'] + '/faces/' + cam + '/' + str(face) + '/name'
-            #print('[DEBUG] Name for {} : {}'.format(path, name))
+            # print('[DEBUG] Name for {} : {}'.format(path, name))
             w.put(path, name)
 
     time.sleep(args['delay'])

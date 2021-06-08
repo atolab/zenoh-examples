@@ -18,11 +18,11 @@ parser = argparse.ArgumentParser(
     prog='encode_faces',
     description='zenoh face recognition example face encoder')
 parser.add_argument('-i', '--dataset', required=True,
-                help='path to input directory of faces + images')
+                    help='path to input directory of faces + images')
 parser.add_argument('-o', '--output', required=True,
-                help='path to output file')
+                    help='path to output file')
 parser.add_argument('-d', '--detection-method', type=str, default='cnn',
-                help='face detection model to use: either `hog` or `cnn`')
+                    help='face detection model to use: either `hog` or `cnn`')
 args = vars(parser.parse_args())
 
 # grab the paths to the input images in our dataset

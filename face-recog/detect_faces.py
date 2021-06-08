@@ -85,7 +85,7 @@ while True:
             buf = io.BytesIO()
             np.save(buf, jpeg, allow_pickle=True)
 
-            #print('[DEBUG] Put detected face: {}/faces/{}/{}'.format(args['prefix'], cam, i))
+            # print('[DEBUG] Put detected face: {}/faces/{}/{}'.format(args['prefix'], cam, i))
             w.put('{}/faces/{}/{}'.format(args['prefix'], cam, i), buf.getvalue())
 
     time.sleep(args['delay'])

@@ -33,7 +33,7 @@ cams = {}
 
 
 def faces_listener(change):
-    #print('[DEBUG] Received face: '+change.path)
+    # print('[DEBUG] Received face: '+change.path)
     chunks = change.path.split('/')
     cam = chunks[-2]
     face = int(chunks[-1])
@@ -48,7 +48,7 @@ def faces_listener(change):
 
 
 def names_listener(change):
-    #print('[DEBUG] Received name: {} {} => {}', change.path, change.value.get_content())
+    # print('[DEBUG] Received name: {} {} => {}', change.path, change.value.get_content())
     chunks = change.path.split('/')
     cam = chunks[-3]
     face = int(chunks[-2])
@@ -58,7 +58,7 @@ def names_listener(change):
     if face not in cams[cam]:
         cams[cam][face] = {'img': b'', 'name': '', 'time': 0}
 
-    cams[cam][face]['name'] = change.value.get_content() 
+    cams[cam][face]['name'] = change.value.get_content()
 
 
 print('[INFO] Open zenoh session...')
@@ -68,7 +68,7 @@ w = z.workspace()
 sub1 = w.subscribe(args['prefix'] + '/faces/*/*', faces_listener)
 sub2 = w.subscribe(args['prefix'] + '/faces/*/*/name', names_listener)
 
-for data in w.get(args['prefix'] + '/faces/*/*/name') :
+for data in w.get(args['prefix'] + '/faces/*/*/name'):
     names_listener(data)
 
 print('[INFO] Display detected faces ...')

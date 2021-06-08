@@ -59,7 +59,7 @@ while True:
     buf = io.BytesIO()
     np.save(buf, jpeg, allow_pickle=True)
 
-    #print('[DEBUG] Put frame: {}/cams/{}'.format(args['prefix'], cam_id))
+    # print('[DEBUG] Put frame: {}/cams/{}'.format(args['prefix'], cam_id))
     w.put('{}/cams/{}'.format(args['prefix'], cam_id), buf.getvalue())
 
     time.sleep(args['delay'])
