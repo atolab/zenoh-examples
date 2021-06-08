@@ -45,7 +45,7 @@ cams = {}
 
 
 def frames_listener(change):
-    # print('[DEBUG] Received face to recognize: {}'.format(change.path))
+    # print('[DEBUG] Received frame: {}'.format(change.path))
     chunks = change.path.split('/')
     cam = chunks[-1]
 
