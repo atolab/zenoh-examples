@@ -11,7 +11,7 @@ import binascii
 import numpy as np
 
 parser = argparse.ArgumentParser(
-    prog='detect_faces',
+    prog='capture_video',
     description='zenoh face recognition example face detector')
 parser.add_argument('-m', '--mode', type=str, choices=['peer', 'client'],
                     help='The zenoh session mode.')
@@ -22,9 +22,9 @@ parser.add_argument('-l', '--listener', type=str, metavar='LOCATOR', action='app
 parser.add_argument('-i', '--id', type=int, default=random.randint(1, 999),
                     help='The Camera ID.')
 parser.add_argument('-w', '--width', type=int, default=500,
-                    help='width of the published faces')
+                    help='width of the published frames')
 parser.add_argument('-q', '--quality', type=int, default=95,
-                    help='quality of the published faces (0 - 100)')
+                    help='quality of the published frames (0 - 100)')
 parser.add_argument('-d', '--delay', type=float, default=0.05,
                     help='delay between each frame in seconds')
 parser.add_argument('-p', '--prefix', type=str, default='/demo/facerecog',
