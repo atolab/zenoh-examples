@@ -17,8 +17,6 @@ parser.add_argument('-e', '--peer', type=str, metavar='LOCATOR', action='append'
                     help='Peer locators used to initiate the zenoh session.')
 parser.add_argument('-l', '--listener', type=str, metavar='LOCATOR', action='append',
                     help='Locators to listen on.')
-parser.add_argument('-q', '--quality', type=int, default=95,
-                    help='The quality of the published faces (0 - 100)')
 parser.add_argument('-p', '--prefix', type=str, default='/demo/facerecog',
                     help='The resources prefix')
 parser.add_argument('-d', '--delay', type=float, default=0.2,
